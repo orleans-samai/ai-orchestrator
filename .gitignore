@@ -1,0 +1,6 @@
+.ai-runs/
+*.log
+.env
+.env.*
+!.env.example
+

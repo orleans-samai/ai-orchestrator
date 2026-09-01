@@ -1,0 +1,270 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+APP_NAME="ai-orchestrator"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/$APP_NAME"
+STATE_FILE="$CONFIG_DIR/enabled"
+PID_FILE="$CONFIG_DIR/active.pid"
+
+mkdir -p "$CONFIG_DIR"
+
+is_enabled() {
+  [[ -f "$STATE_FILE" ]] && [[ "$(<"$STATE_FILE")" == "1" ]]
+}
+
+set_enabled() {
+  printf '%s\n' "$1" > "$STATE_FILE"
+}
+
+active_pid() {
+  if [[ -f "$PID_FILE" ]]; then
+    local pid
+    pid="$(<"$PID_FILE")"
+    if [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null; then
+      printf '%s\n' "$pid"
+      return 0
+    fi
+    rm -f "$PID_FILE"
+  fi
+  return 1
+}
+
+stop_active() {
+  local pid
+  if pid="$(active_pid)"; then
+    echo "Interrompendo a fase ativa (PID $pid)..."
+    kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+    for _ in {1..20}; do
+      kill -0 "$pid" 2>/dev/null || break
+      sleep 0.1
+    done
+    if kill -0 "$pid" 2>/dev/null; then
+      echo "O processo não encerrou imediatamente; verifique com: ps -p $pid"
+    else
+      rm -f "$PID_FILE"
+      echo "Fase interrompida. Os arquivos já produzidos foram preservados."
+    fi
+  fi
+}
+
+require_enabled() {
+  if ! is_enabled; then
+    echo "Orquestração desativada. Ative com: $0 on" >&2
+    exit 2
+  fi
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "Comando obrigatório não encontrado: $1" >&2
+    exit 3
+  }
+}
+
+confirm() {
+  local answer
+  read -r -p "$1 [digite SIM]: " answer
+  [[ "$answer" == "SIM" ]]
+}
+
+run_phase() {
+  local label="$1"
+  local output_file="$2"
+  shift 2
+
+  require_enabled
+  echo
+  echo "==> $label"
+  echo "Saída: $output_file"
+
+  setsid "$@" >"$output_file" 2>"${output_file%.md}.log" &
+  local pid=$!
+  printf '%s\n' "$pid" > "$PID_FILE"
+
+  local rc=0
+  wait "$pid" || rc=$?
+  rm -f "$PID_FILE"
+
+  if ! is_enabled; then
+    echo "Orquestração foi desativada durante a fase. Fluxo encerrado."
+    exit 130
+  fi
+  if (( rc != 0 )); then
+    echo "A fase falhou (código $rc). Consulte ${output_file%.md}.log" >&2
+    exit "$rc"
+  fi
+}
+
+show_status() {
+  if is_enabled; then
+    echo "Orquestração: ATIVADA"
+  else
+    echo "Orquestração: DESATIVADA"
+  fi
+
+  local pid
+  if pid="$(active_pid)"; then
+    echo "Execução ativa: PID $pid"
+  else
+    echo "Execução ativa: nenhuma"
+  fi
+
+  for cli in agy codex claude; do
+    if command -v "$cli" >/dev/null 2>&1; then
+      echo "$cli: disponível ($(command -v "$cli"))"
+    else
+      echo "$cli: não encontrado"
+    fi
+  done
+}
+
+run_workflow() {
+  require_enabled
+  require_command agy
+  require_command codex
+  require_command claude
+  require_command git
+  require_command setsid
+
+  if (( $# == 0 )); then
+    echo "Informe a tarefa. Exemplo:" >&2
+    echo "  $0 run \"Adicionar orçamento mensal ao aplicativo de finanças\"" >&2
+    exit 4
+  fi
+
+  local task="$*"
+  local project_dir="$PWD"
+  local run_dir="$project_dir/.ai-runs/$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$run_dir"
+
+  echo "Projeto: $project_dir"
+  echo "Tarefa: $task"
+  echo "Relatórios: $run_dir"
+  echo
+  git status --short || true
+
+  if ! confirm "O projeto e a tarefa estão corretos?"; then
+    echo "Cancelado sem chamar agentes."
+    exit 0
+  fi
+
+  run_phase "1/5 - Antigravity planejando (sem escrita)" "$run_dir/plano.md" \
+    agy -p --mode plan --sandbox --output-format text \
+    "Analise este projeto sem modificar arquivos. Tarefa: $task
+
+Produza diagnóstico, escopo, arquivos afetados, etapas, riscos, testes e critérios de conclusão.
+Para aplicativo financeiro, priorize precisão monetária, validação, privacidade, idempotência e prevenção de perda de dados. Não implemente."
+
+  echo
+  echo "Plano concluído: $run_dir/plano.md"
+  if ! confirm "Você leu e aprovou o plano?"; then
+    echo "Fluxo pausado. Nenhum arquivo do aplicativo foi alterado pelo Codex."
+    exit 0
+  fi
+
+  run_phase "2/5 - Codex implementando" "$run_dir/codex-exec.log.md" \
+    codex exec -C "$project_dir" --sandbox workspace-write \
+    "Leia $run_dir/plano.md. Implemente somente o plano aprovado para a tarefa: $task
+
+Execute testes relevantes. Não faça deploy, push, merge nem acesse produção. Não altere arquivos fora deste projeto." \
+    -o "$run_dir/implementacao.md"
+
+  echo
+  git status --short || true
+  git diff --stat || true
+  if ! confirm "Você inspecionou o git diff e autoriza a revisão?"; then
+    echo "Fluxo pausado. As alterações existentes foram preservadas."
+    exit 0
+  fi
+
+  run_phase "3/5 - Claude revisando (sem edição)" "$run_dir/revisao.md" \
+    claude -p --permission-mode plan --tools "Read,Grep,Glob,Bash" \
+    "Atue como revisor independente. Tarefa: $task
+
+Leia $run_dir/plano.md e $run_dir/implementacao.md. Examine o git diff e os testes. Não edite arquivos.
+Liste somente problemas concretos. Para cada achado, informe severidade, arquivo/linha, evidência, impacto e correção sugerida.
+Em software financeiro, verifique cálculos, arredondamento, duplicação, concorrência, validação, privacidade e perda de dados."
+
+  run_phase "4/5 - Codex validando a revisão (sem edição)" "$run_dir/codex-triagem.log.md" \
+    codex exec -C "$project_dir" --sandbox read-only \
+    "Leia $run_dir/revisao.md. Sem editar, classifique cada achado como confirmado, parcialmente válido, falso positivo ou fora do escopo. Inclua evidências." \
+    -o "$run_dir/triagem.md"
+
+  echo
+  echo "Revisão: $run_dir/revisao.md"
+  echo "Triagem:  $run_dir/triagem.md"
+  if ! confirm "Você aprova corrigir somente os achados confirmados?"; then
+    echo "Fluxo pausado antes das correções."
+    exit 0
+  fi
+
+  run_phase "5/5 - Codex corrigindo e testando" "$run_dir/codex-final.log.md" \
+    codex exec -C "$project_dir" --sandbox workspace-write \
+    "Leia $run_dir/revisao.md e $run_dir/triagem.md. Corrija somente achados confirmados ou parcialmente válidos. Não adicione funcionalidades. Execute os testes. Não faça deploy nem push." \
+    -o "$run_dir/resultado-final.md"
+
+  echo
+  echo "Fluxo concluído. Revise antes de criar qualquer commit:"
+  echo "  git status"
+  echo "  git diff"
+  echo "Relatórios: $run_dir"
+}
+
+usage() {
+  cat <<EOF
+Uso: $0 COMANDO
+
+Comandos:
+  on                 Ativa novas execuções
+  off                Desativa e tenta interromper a fase ativa
+  toggle             Alterna entre ativado e desativado
+  status             Mostra estado, processo ativo e CLIs disponíveis
+  run "TAREFA"       Executa o fluxo com aprovações humanas
+  help               Mostra esta ajuda
+
+Exemplo:
+  cd ~/projetos/minhas-financas
+  $0 on
+  $0 run "Adicionar orçamento mensal por categoria"
+
+Em outro terminal, para interromper:
+  $0 off
+EOF
+}
+
+case "${1:-help}" in
+  on)
+    set_enabled 1
+    echo "Orquestração ativada."
+    ;;
+  off)
+    set_enabled 0
+    echo "Orquestração desativada."
+    stop_active
+    ;;
+  toggle)
+    if is_enabled; then
+      set_enabled 0
+      echo "Orquestração desativada."
+      stop_active
+    else
+      set_enabled 1
+      echo "Orquestração ativada."
+    fi
+    ;;
+  status)
+    show_status
+    ;;
+  run)
+    shift
+    run_workflow "$@"
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    echo "Comando desconhecido: $1" >&2
+    usage >&2
+    exit 1
+    ;;
+esac
