@@ -6,18 +6,18 @@
 
 **Antigravity planeja · Codex implementa · Claude revisa · Você aprova**
 
-[![Shell](https://img.shields.io/badge/Shell-Bash-4EAA25?logo=gnu-bash&logoColor=white)](bin/ai-orchestrator)
-[![Platform](https://img.shields.io/badge/Plataforma-Linux-FCC624?logo=linux&logoColor=black)](#pré-requisitos)
-[![License](https://img.shields.io/badge/Licença-MIT-2563EB)](LICENSE)
-[![Human in the loop](https://img.shields.io/badge/Controle-Human--in--the--loop-7C3AED)](#segurança-por-padrão)
+[![Shell](https://img.shields.io/badge/Shell-Bash-4EAA25?style=for-the-badge&logo=gnu-bash&logoColor=white)](bin/ai-orchestrator)
+[![Platform](https://img.shields.io/badge/Plataforma-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](#-pré-requisitos)
+[![License](https://img.shields.io/badge/Licença-MIT-2563EB?style=for-the-badge)](LICENSE)
+[![Human in the loop](https://img.shields.io/badge/Controle-Human--in--the--loop-7C3AED?style=for-the-badge)](#-segurança-por-padrão)
 
-[Começar agora](#início-rápido) · [Entender o fluxo](#como-funciona) · [Ver exemplo prático](#exemplo-aplicativo-de-finanças) · [Manual em PDF](docs/manual-pt-BR.pdf)
+[Começar agora](#-início-rápido) · [Entender o fluxo](#-como-funciona) · [Ver exemplo prático](#-exemplo-aplicativo-de-finanças) · [Manual em PDF](docs/manual-pt-BR.pdf)
 
 </div>
 
 ---
 
-## O problema
+## 🧩 O problema
 
 Usar vários agentes de programação no mesmo projeto pode acelerar o desenvolvimento, mas também cria riscos:
 
@@ -32,7 +32,7 @@ O **AI Orchestrator** organiza esse trabalho como uma pequena equipe de desenvol
 
 > O objetivo não é remover o desenvolvedor do processo. É permitir que ele use diferentes agentes com mais organização, rastreabilidade e controle.
 
-## Como isso ajuda no desenvolvimento?
+## 💡 Como isso ajuda no desenvolvimento?
 
 | Sem orquestração | Com AI Orchestrator |
 |---|---|
@@ -52,7 +52,7 @@ Benefícios práticos:
 - **Controle de escopo:** os prompts proíbem deploy, `push`, `merge` e mudanças fora do projeto.
 - **Aprendizado:** o desenvolvedor consegue acompanhar cada etapa.
 
-## Como funciona
+## 🔀 Como funciona
 
 ```mermaid
 flowchart TD
@@ -80,7 +80,7 @@ flowchart TD
 | **Codex na triagem** | Verificar se os achados do revisor são verdadeiros | Somente leitura |
 | **Você** | Aprovar escopo, mudanças e correções | Decisão final nas etapas críticas |
 
-## Início rápido
+## 🚀 Início rápido
 
 ### 1. Clone e instale
 
@@ -131,7 +131,7 @@ ai-orchestrator off
 
 Isso impede novas fases e tenta encerrar o processo ativo, preservando os arquivos que já foram produzidos.
 
-## Comandos
+## ⌨ Comandos
 
 | Comando | O que faz |
 |---|---|
@@ -142,7 +142,7 @@ Isso impede novas fases e tenta encerrar o processo ativo, preservando os arquiv
 | `ai-orchestrator run "TAREFA"` | Inicia o fluxo completo para a tarefa informada |
 | `ai-orchestrator help` | Exibe a ajuda no terminal |
 
-## Exemplo: aplicativo de finanças
+## 🧪 Exemplo: aplicativo de finanças
 
 Imagine um aplicativo de finanças pessoais que já registra receitas e despesas. A próxima funcionalidade é permitir que o usuário defina um limite mensal para cada categoria.
 
@@ -176,7 +176,7 @@ git diff
 
 > Para testar software financeiro, use somente dados fictícios. Não coloque credenciais bancárias, dados pessoais ou informações financeiras reais nos prompts.
 
-## Relatórios gerados
+## 📄 Relatórios gerados
 
 Cada execução cria uma pasta com data e hora dentro do projeto trabalhado:
 
@@ -196,7 +196,7 @@ Se esses relatórios não devem ser versionados, acrescente ao `.gitignore` do p
 .ai-runs/
 ```
 
-## Segurança por padrão
+## 🔒 Segurança por padrão
 
 O executável foi construído com decisões conservadoras:
 
@@ -210,7 +210,7 @@ O executável foi construído com decisões conservadoras:
 
 Essas proteções **reduzem riscos, mas não garantem que o código gerado esteja correto ou seguro**. Leia [SECURITY.md](SECURITY.md), mantenha backups e revise todo comando solicitado pelos agentes.
 
-## Pré-requisitos
+## 📋 Pré-requisitos
 
 Instale e autentique separadamente:
 
@@ -220,7 +220,7 @@ Instale e autentique separadamente:
 
 O ambiente também precisa de Linux, Bash, Git e `setsid` (normalmente fornecido pelo pacote `util-linux`). O AI Orchestrator não instala, autentica nem compartilha credenciais entre os provedores.
 
-## Quando usar
+## 🎯 Quando usar
 
 É especialmente útil para:
 
@@ -233,7 +233,7 @@ O ambiente também precisa de Linux, Bash, Git e `setsid` (normalmente fornecido
 
 Talvez não seja necessário para corrigir um texto, renomear uma variável ou realizar outra mudança trivial de poucos minutos.
 
-## Limitações atuais
+## 🚧 Limitações atuais
 
 - Desenvolvido para Linux com Bash e `setsid`.
 - Flags e comportamentos dos CLIs podem mudar entre versões.
@@ -241,21 +241,21 @@ Talvez não seja necessário para corrigir um texto, renomear uma variável ou r
 - O fluxo não substitui revisão profissional, testes, backup, CI/CD ou controles de segurança da organização.
 - A qualidade depende do projeto, dos prompts, das versões dos modelos e da avaliação humana.
 
-## Documentação
+## 📚 Documentação
 
 - [Manual completo em português](docs/manual-pt-BR.pdf)
 - [Política de segurança](SECURITY.md)
 - [Como contribuir](CONTRIBUTING.md)
 
-## Contribuindo
+## 🤝 Contribuindo
 
 Sugestões e pull requests são bem-vindos. Antes de contribuir, leia [CONTRIBUTING.md](CONTRIBUTING.md). Mudanças devem preservar os pontos de aprovação humana e os padrões conservadores de permissão.
 
-## Licença
+## 📄 Licença
 
 Distribuído sob a licença [MIT](LICENSE).
 
-## Aviso de independência
+## ⚖ Aviso de independência
 
 Este é um projeto comunitário independente. Não possui afiliação, endosso ou patrocínio de Google, OpenAI, Anthropic, Antigravity, Codex ou Claude. Os nomes de produtos e marcas pertencem aos seus respectivos proprietários.
 
@@ -264,5 +264,11 @@ Este é um projeto comunitário independente. Não possui afiliação, endosso o
 <div align="center">
 
 **Gostou da proposta? Dê uma estrela, teste em um projeto não crítico e compartilhe seu feedback.**
+
+</div>
+
+<div align="center">
+
+<sub>Feito com 💙 por [Orleans Samai](https://github.com/orleans-samai)</sub>
 
 </div>
